@@ -74,12 +74,14 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
             } else if (arguments.containsKey("turnOnPower")) {
                 if ((boolean) arguments.get("turnOnPower")) {
                     if (CONNECT_SUCCESS) {
+                        Log.e("上电", "上电成功");
                         client.hdPowerOn();
                         message_map.clear();
                         message_map.put("powerMessage", "上电成功");
                         flutter_channel.send(message_map);
                         POWER_ON = true;
                     } else {
+                        Log.e("上电", "上电失败");
                         message_map.clear();
                         message_map.put("powerMessage", "上电失败，未建立连接，请先建立连接");
                         flutter_channel.send(message_map);
@@ -89,12 +91,14 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
             } else if (arguments.containsKey("turnOffPower")) {
                 if ((boolean) arguments.get("turnOffPower")) {
                     if (CONNECT_SUCCESS) {
+                        Log.e("下电", "下电成功");
                         client.hdPowerOff();
                         message_map.clear();
                         message_map.put("powerMessage", "下电成功");
                         flutter_channel.send(message_map);
                         POWER_ON = false;
                     } else {
+                        Log.e("下电", "下电失败");
                         message_map.clear();
                         message_map.put("powerMessage", "下电失败，未建立连接，请先建立连接");
                         flutter_channel.send(message_map);
