@@ -27,7 +27,7 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
   ///
   /// This local reference serves to register the plugin with the Flutter Engine and unregister it
   /// when the Flutter Engine is detached from the Activity
-  private static final String FLUTTER_TO_ANDROID_CHANNEL = "flutter_and_android";
+  private static final String FLUTTER_TO_ANDROID_CHANNEL = "flutter_rfid_android";
   private BasicMessageChannel<Object> flutter_channel;
   private Context applicationContext;
   private GClient client = new GClient();
