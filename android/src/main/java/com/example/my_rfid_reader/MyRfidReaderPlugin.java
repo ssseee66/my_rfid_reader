@@ -54,8 +54,11 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
       if (arguments != null) {
         if (arguments.containsKey("startConnect")) {
           if ((boolean) arguments.get("startConnect")) {
+            
             CONNECT_SUCCESS = client.openHdSerial("13:115200", 1000);
+            Log.e("连接", "连接中。。。。。");
             if (CONNECT_SUCCESS) {
+              Log.e("连接", "连接成功");
               message_map.clear();
               message_map.put("connectMessage", "连接成功");
               flutter_channel.send(message_map);
