@@ -147,6 +147,11 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
       public void receiveDebugLog(String msg) {
         Log.e("receiveDebugLog",msg);
       }
+      
+      @Override
+      public void crcErrorLog(String msg) {
+        Log.e("crcErrorLog", msg);
+      }
     };
   }
 
