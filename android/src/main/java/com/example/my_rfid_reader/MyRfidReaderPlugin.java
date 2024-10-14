@@ -9,6 +9,7 @@ import com.gg.reader.api.dal.GClient;
 import com.gg.reader.api.dal.HandlerDebugLog;
 import com.gg.reader.api.protocol.gx.EnumG;
 import com.gg.reader.api.protocol.gx.MsgBaseInventoryEpc;
+import com.gg.reader.api.protocol.gx.MsgBaseStop;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -35,7 +36,6 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
     private GClient client = new GClient();
     private boolean CONNECT_SUCCESS = false;
     private Map<String, Object> message_map = new HashMap<>();
-    private boolean APPEAR_OVER = false;
     private boolean POWER_ON = false;
     private List<String> epc_message = new LinkedList<>();
 
@@ -140,17 +140,14 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
                     }
                 } else if (arguments.containsKey("startReaderEpc")) {
                     if ((boolean) arguments.get("startReaderEpc")) {
-                        if (APPEAR_OVER) {
-                            Map<String, Object> map = new HashMap<>();
-                            map.put("epcMessages", epc_message);
-                            flutter_channel.send(map);
-                            epc_message.clear();
-                            APPEAR_OVER = false;
-                        } else {
-                            Map<String, Object> map = new HashMap<>();
-                            map.put("epcMessages", "未进行读卡操作！");
-                            flutter_channel.send(map);
-                            epc_message.clear();
+                        MsgBaseStop msgBaseStop = new MsgBaseStop();
+                        client.sendSynMsg(msgBaseStop);
+                        if (0x00 == msgBaseStop.getRtCode()) {
+                            message_map.clear();
+                            message_map.put("epcMessages", epc_message);
+                            Log.e("epcMessages", "" + message_map);
+                            flutter_channel.send(message_map);
+                            epcMessages.clear();
                         }
                     }
                 }else if (arguments.containsKey("closeConnect")) {
@@ -176,10 +173,6 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
             Log.e("HandlerTagEpcOver", logBaseEpcOver.getRtMsg());
             // send();
             Log.e("epcAppearOver", epc_message.toString());
-            APPEAR_OVER = true;
-            message_map.clear();
-            message_map.put("epcMessage", "上报结束");
-            flutter_channel.send(message_map);
         };
         
         client.debugLog = new HandlerDebugLog() {
