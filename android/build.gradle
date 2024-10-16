@@ -57,13 +57,14 @@ android {
             }
         }
     }
-    android {
-        buildTypes {
-            release {
-                //关闭混淆, 否则在运行release包后可能出现运行崩溃， TODO后续进行混淆配置
-                minifyEnabled false //删除无用代码
-                shrinkResources false //删除无用资源
-            }
+    buildTypes {
+        debug {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
