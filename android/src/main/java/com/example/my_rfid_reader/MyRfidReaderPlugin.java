@@ -9,6 +9,8 @@ import com.gg.reader.api.dal.GClient;
 import com.gg.reader.api.dal.HandlerDebugLog;
 import com.gg.reader.api.protocol.gx.EnumG;
 import com.gg.reader.api.protocol.gx.MsgBaseInventoryEpc;
+import com.gg.reader.api.protocol.gx.MsgBaseStop;
+import com.gg.reader.api.protocol.gx.MsgAppGetReaderInfo;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -35,9 +37,9 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
     private GClient client = new GClient();
     private boolean CONNECT_SUCCESS = false;
     private Map<String, Object> message_map = new HashMap<>();
-    private boolean APPEAR_OVER = false;
     private boolean POWER_ON = false;
     private List<String> epc_message = new LinkedList<>();
+    private boolean APPEAR_OVER = true;
     
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
@@ -76,10 +78,23 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
                         if (CONNECT_SUCCESS) {
                             Log.e("上电", "上电成功");
                             client.hdPowerOn();
-                            message_map.clear();
-                            message_map.put("powerMessage", "上电成功");
-                            flutter_channel.send(message_map);
-                            POWER_ON = true;
+                            MsgAppGetReaderInfo msgAppGetReaderInfo = new MsgAppGetReaderInfo();
+                            client.sendSynMsg(msgAppGetReaderInfo);
+                            String serial_number = "";
+                            if (msgAppGetReaderInfo.getRtCode() == 0) {
+                                serial_number = msgAppGetReaderInfo.getReaderSerialNumber();
+                                Log.e("serial_number", serial_number);
+                                message_map.clear();
+                                message_map.put("powerMessage", "上电成功#" + serial_number);
+                                flutter_channel.send(message_map);
+                                POWER_ON = true;
+                            } else {
+                                Log.e("serial_number", msgAppGetReaderInfo.getRtCode() + "");
+                                message_map.clear();
+                                message_map.put("powerMessage", "未查询到流水号");
+                                flutter_channel.send(message_map);
+                            }
+                            
                         } else {
                             Log.e("上电", "上电失败");
                             message_map.clear();
@@ -140,30 +155,34 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
                     }
                 } else if (arguments.containsKey("startReaderEpc")) {
                     if ((boolean) arguments.get("startReaderEpc")) {
+                        Log.e("start_reader_epc", "开始读数据");
                         if (APPEAR_OVER) {
+                            Log.e("start_reader_epc", "读数据");
                             message_map.clear();
+                            epc_message.add("OK");   // 当未读取到数据时，flet端会收取不到信息，添加一条读取数据完成的标识
                             message_map.put("epcMessages", epc_message);
                             flutter_channel.send(message_map);
                             epc_message.clear();
                             APPEAR_OVER = false;
                         } else {
                             message_map.clear();
-                            message_map.put("epcMessages", "未进行读卡操作！");
+                            List<String> message_list = new LinkedList<>();
+                            message_list.add("未上报结束");
+                            message_map.put("epcMessages", message_list);
                             flutter_channel.send(message_map);
-                            epc_message.clear();
+                            Log.e("appear_over_not", "未上报结束");
                         }
                     }
-                }else if (arguments.containsKey("closeConnect")) {
-                    if ((boolean) arguments.get("closeConnect")) {
-                        Log.e("close_connect", "开始断开连接");
-                        client.close();
-                        Log.e("close_connect", "连接已经断开");
-                        CONNECT_SUCCESS = false;
-                        message_map.clear();
-                        message_map.put("connectMessage", "连接已关闭");
-                        flutter_channel.send(message_map);
-                    }
                 }
+                // else if (arguments.containsKey("closeConnect")) {
+                //     if ((boolean) arguments.get("closeConnect")) {
+                //         client.close();
+                //         CONNECT_SUCCESS = false;
+                //         message_map.clear();
+                //         message_map.put("connectMessage", "连接已关闭");
+                //         flutter_channel.send(message_map);
+                //     }
+                // }
             }
         });
     }
@@ -171,7 +190,6 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
         client.onTagEpcLog = (s, logBaseEpcInfo) -> {
             if (logBaseEpcInfo.getResult() == 0) {
                 Log.e("readerEPC", logBaseEpcInfo.getEpc());
-                Log.e("epc_messages", epc_message.toString());
                 epc_message.add(logBaseEpcInfo.getEpc());
             }
         };
