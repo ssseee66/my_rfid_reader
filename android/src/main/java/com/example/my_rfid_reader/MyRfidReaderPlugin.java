@@ -11,7 +11,12 @@ import com.gg.reader.api.protocol.gx.EnumG;
 import com.gg.reader.api.protocol.gx.MsgBaseInventoryEpc;
 import com.gg.reader.api.protocol.gx.MsgBaseStop;
 import com.gg.reader.api.protocol.gx.MsgAppGetReaderInfo;
+import com.gg.reader.api.protocol.gx.MsgBaseWriteEpc;
+import com.gg.reader.api.utils.BitBuffer;
+import com.gg.reader.api.utils.HexUtils;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -39,7 +44,7 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
     private Map<String, Object> message_map = new HashMap<>();
     private boolean POWER_ON = false;
     private List<String> epc_message = new LinkedList<>();
-    private boolean APPEAR_OVER = true;
+    private boolean APPEAR_OVER = false;
     
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
@@ -112,6 +117,7 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
                             message_map.put("powerMessage", "下电成功");
                             flutter_channel.send(message_map);
                             POWER_ON = false;
+                            epc_message.clear();
                         } else {
                             Log.e("下电", "下电失败");
                             message_map.clear();
@@ -173,6 +179,26 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
                             Log.e("appear_over_not", "未上报结束");
                         }
                     }
+                } else if (arguments.containsKey("writeEpcData")) {
+                    String write_epc_data = (String) arguments.get("writeEpcData");
+                    String epc_data = write_epc_data.split("&")[0];
+                    int epc_data_area = Integer.parseInt(write_epc_data.split("&")[1]);
+                    MsgBaseWriteEpc msgBaseWriteEpc = new MsgBaseWriteEpc();
+                    msgBaseWriteEpc.setArea(epc_data_area);
+                    msgBaseWriteEpc.setStart(1);     // 起始地址
+                    msgBaseWriteEpc.setAntennaEnable(EnumG.AntennaNo_1);
+                    if (epc_data != null) {
+                        int valueLen = getValueLen(epc_data);
+                        if (msgBaseWriteEpc.getArea() == 1 && msgBaseWriteEpc.getStart() == 1) {
+                            epc_data = getPc(valueLen) + padLeft(epc_data, valueLen * 4, '0');
+                        }
+                        msgBaseWriteEpc.setHexWriteData(epc_data);
+                        Log.e("writeEpcData", epc_data);
+                        Log.e("writeEpcData", epc_data + Arrays.toString(epc_data.getBytes()));
+                    }
+                    client.sendSynMsg(msgBaseWriteEpc);
+                    byte code = msgBaseWriteEpc.getRtCode();
+                    setWriteMessage(code);
                 }
                 // else if (arguments.containsKey("closeConnect")) {
                 //     if ((boolean) arguments.get("closeConnect")) {
@@ -226,4 +252,98 @@ public class MyRfidReaderPlugin implements FlutterPlugin{
     
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {}
+    
+    private int getValueLen(String data) {
+        data = data.trim();
+        return data.length() % 4 == 0 ? data.length() / 4
+                : (data.length() / 4) + 1;
+    }
+    private String getPc(int pcLen) {
+        int iPc = pcLen << 11;
+        BitBuffer buffer = BitBuffer.allocateDynamic();
+        buffer.put(iPc);
+        buffer.position(16);
+        byte[] bTmp = new byte[2];
+        buffer.get(bTmp);
+        return HexUtils.bytes2HexString(bTmp);
+    }
+    
+    private String padLeft(String src, int len, char ch) {
+        int diff = len - src.length();
+        if (diff <= 0) {
+            return src;
+        }
+        
+        char[] chars = new char[len];
+        System.arraycopy(src.toCharArray(), 0, chars, 0, src.length());
+        for (int i = src.length(); i < len; i++) {
+            chars[i] = ch;
+        }
+        return new String(chars);
+    }
+    
+    private void setWriteMessage(byte code) {
+        String write_tag = "writeEpcMessage";
+        String write_message = "";
+        String log_write_tag = "writeEpcData";
+        String log_write_message = "";
+        switch (code) {
+            case 0X00:
+                log_write_message = "写入成功";
+                write_message = "写入成功" + code;
+                break;
+            case 0X01:
+                log_write_message = "天线端口参数错误";
+                write_message = "天线端口参数错误" + code;
+                break;
+            case 0X02:
+                log_write_message = "选择参数错误";
+                write_message = "选择参数错误" + code;
+                break;
+            case 0X03:
+                log_write_message = "选择参数错误";
+                write_message = "选择参数错误" + code;
+                break;
+            case 0X04:
+                log_write_message = "CPC校验错误";
+                write_message = "CPC校验错误" + code;
+                break;
+            case 0X05:
+                log_write_message = "功率不足";
+                write_message = "功率不足" + code;
+                break;
+            case 0X06:
+                log_write_message = "数据区溢出";
+                write_message = "数据区溢出" + code;
+                break;
+            case 0X07:
+                log_write_message = "数据区被锁定";
+                write_message = "数据区被锁定" + code;
+                break;
+            case 0X08:
+                log_write_message = "访问密码错误";
+                write_message = "访问密码错误" + code;
+                break;
+            case 0X09:
+                log_write_message = "其他标签错误";
+                write_message = "其他标签错误" + code;
+                break;
+            case 0X0A:
+                log_write_message = "标签丢失";
+                write_message = "标签丢失" + code;
+                break;
+            case 0X0B:
+                log_write_message = "读写器发送指令错误";
+                write_message = "读写器发送指令错误" + code;
+                break;
+            default:
+                log_write_message = "其他错误";
+                write_message = "其他错误";
+                break;
+        }
+        Log.e(log_write_tag, log_write_message);
+        message_map.clear();
+        message_map.put(write_tag, write_message);
+        flutter_channel.send(message_map);
+    }
 }
